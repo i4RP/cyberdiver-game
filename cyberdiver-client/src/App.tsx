@@ -7,6 +7,7 @@ import LobbyPage from './pages/LobbyPage';
 import MatchmakingPage from './pages/MatchmakingPage';
 import BriefingPage from './pages/BriefingPage';
 import ResultsPage from './pages/ResultsPage';
+import EconomyPage from './pages/EconomyPage';
 import GameScene from './game/GameScene';
 
 function App() {
@@ -78,6 +79,8 @@ function App() {
       return <GameScene />;
     case 'results':
       return <ResultsPage />;
+    case 'economy':
+      return <EconomyPage />;
     default:
       return <LoginPage />;
   }
