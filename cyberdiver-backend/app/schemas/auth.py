@@ -17,6 +17,10 @@ class GuestLoginRequest(BaseModel):
     display_name: Optional[str] = None
 
 
+class PrivyAuthRequest(BaseModel):
+    privy_token: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

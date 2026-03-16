@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import api from '../services/api';
 import { useGameStore } from '../stores/gameStore';
 
@@ -8,6 +9,7 @@ export default function LobbyPage() {
   const setScreen = useGameStore((s) => s.setScreen);
   const setBattle = useGameStore((s) => s.setBattle);
   const resetBattle = useGameStore((s) => s.resetBattle);
+  const { logout: privyLogout } = usePrivy();
   const [betAmount, setBetAmount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -65,9 +67,10 @@ export default function LobbyPage() {
     setScreen('briefing');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     api.clearToken();
     setUser(null);
+    await privyLogout();
     setScreen('login');
   };
 
