@@ -25,7 +25,7 @@ export default function LobbyPage() {
         api.getStats(),
         api.getProfile(),
       ]);
-      setLeaderboard(lb);
+      setLeaderboard(Array.isArray(lb) ? lb : (lb?.leaderboard || []));
       setStats(st);
       setUser(profile);
     } catch (err) {
