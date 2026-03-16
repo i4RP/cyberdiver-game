@@ -12,6 +12,44 @@ interface User {
   created_at: string;
 }
 
+export interface BotPlayer {
+  id: number;
+  team: 'alpha' | 'bravo';
+  health: number;
+  maxHealth: number;
+  position: [number, number, number];
+  targetPosition: [number, number, number];
+  isDowned: boolean;
+  downTimer: number;
+  isAlive: boolean;
+}
+
+export interface CyberSoulData {
+  id: number;
+  position: [number, number, number];
+  collected: boolean;
+  sourceTeam: 'alpha' | 'bravo';
+}
+
+export interface CyberGateData {
+  id: string;
+  team: 'alpha' | 'bravo';
+  position: [number, number, number];
+  health: number;
+  maxHealth: number;
+  isDestroyed: boolean;
+  respawnTimer: number;
+}
+
+export interface KillFeedEntry {
+  id: number;
+  killer: string;
+  victim: string;
+  killerTeam: 'alpha' | 'bravo';
+  victimTeam: 'alpha' | 'bravo';
+  timestamp: number;
+}
+
 interface BattleState {
   battleId: string | null;
   team: string | null;
@@ -20,50 +58,64 @@ interface BattleState {
   teamBravoLife: number;
   timer: number;
   gate: string;
-  participants: any[];
+  participants: unknown[];
 }
 
 type GameScreen = 'login' | 'lobby' | 'matchmaking' | 'briefing' | 'battle' | 'results';
 
 interface GameStore {
-  // Auth
   user: User | null;
   setUser: (user: User | null) => void;
-
-  // Game screen
   screen: GameScreen;
   setScreen: (screen: GameScreen) => void;
-
-  // Battle
   battle: BattleState;
   setBattle: (battle: Partial<BattleState>) => void;
   resetBattle: () => void;
-
-  // Player state in battle
   health: number;
+  maxHealth: number;
   setHealth: (health: number) => void;
   isDowned: boolean;
   setIsDowned: (downed: boolean) => void;
   respawnCount: number;
   incrementRespawn: () => void;
-
-  // Combat stats
+  respawnTimer: number;
+  setRespawnTimer: (t: number) => void;
+  ammo: number;
+  maxAmmo: number;
+  setAmmo: (ammo: number) => void;
+  reload: () => void;
   damageDealt: number;
   damageTaken: number;
+  kills: number;
+  deaths: number;
   cyberSoulsCollected: number;
   cyberSoulsLost: number;
   supportScore: number;
+  gatesDestroyed: number;
+  perfectVictory: boolean;
   addDamageDealt: (amount: number) => void;
   addDamageTaken: (amount: number) => void;
+  addKill: () => void;
+  addDeath: () => void;
   addCyberSoul: () => void;
   loseCyberSoul: () => void;
   addSupportScore: (amount: number) => void;
-
-  // Pointer lock
+  addGateDestroyed: () => void;
+  bots: BotPlayer[];
+  setBots: (bots: BotPlayer[]) => void;
+  updateBot: (id: number, data: Partial<BotPlayer>) => void;
+  cyberSouls: CyberSoulData[];
+  addCyberSoulDrop: (soul: Omit<CyberSoulData, 'id'>) => void;
+  collectCyberSoul: (id: number) => void;
+  cyberGates: CyberGateData[];
+  setCyberGates: (gates: CyberGateData[]) => void;
+  damageGate: (id: string, amount: number) => void;
+  respawnGate: (id: string) => void;
+  killFeed: KillFeedEntry[];
+  addKillFeedEntry: (entry: Omit<KillFeedEntry, 'id' | 'timestamp'>) => void;
+  damageTeamLife: (team: 'alpha' | 'bravo', amount: number) => void;
   isPointerLocked: boolean;
   setPointerLocked: (locked: boolean) => void;
-
-  // Settings
   sensitivity: number;
   setSensitivity: (s: number) => void;
 }
@@ -79,48 +131,146 @@ const initialBattle: BattleState = {
   participants: [],
 };
 
+const createInitialBots = (): BotPlayer[] => [
+  { id: 1, team: 'bravo', health: 1000, maxHealth: 1000, position: [10, 0, 5], targetPosition: [15, 0, -5], isDowned: false, downTimer: 0, isAlive: true },
+  { id: 2, team: 'bravo', health: 1000, maxHealth: 1000, position: [20, 0, -10], targetPosition: [5, 0, 10], isDowned: false, downTimer: 0, isAlive: true },
+  { id: 3, team: 'bravo', health: 1000, maxHealth: 1000, position: [15, 0, 15], targetPosition: [-5, 0, -8], isDowned: false, downTimer: 0, isAlive: true },
+  { id: 4, team: 'bravo', health: 1000, maxHealth: 1000, position: [25, 0, 0], targetPosition: [10, 0, 15], isDowned: false, downTimer: 0, isAlive: true },
+  { id: 5, team: 'alpha', health: 1000, maxHealth: 1000, position: [-10, 0, 5], targetPosition: [-15, 0, -5], isDowned: false, downTimer: 0, isAlive: true },
+  { id: 6, team: 'alpha', health: 1000, maxHealth: 1000, position: [-20, 0, -10], targetPosition: [-5, 0, 10], isDowned: false, downTimer: 0, isAlive: true },
+  { id: 7, team: 'alpha', health: 1000, maxHealth: 1000, position: [-15, 0, 15], targetPosition: [5, 0, -8], isDowned: false, downTimer: 0, isAlive: true },
+  { id: 8, team: 'alpha', health: 1000, maxHealth: 1000, position: [-25, 0, 0], targetPosition: [-10, 0, 15], isDowned: false, downTimer: 0, isAlive: true },
+];
+
+const createInitialGates = (): CyberGateData[] => [
+  { id: 'gate-alpha', team: 'alpha', position: [-30, 2, 0], health: 500, maxHealth: 500, isDestroyed: false, respawnTimer: 0 },
+  { id: 'gate-bravo', team: 'bravo', position: [30, 2, 0], health: 500, maxHealth: 500, isDestroyed: false, respawnTimer: 0 },
+];
+
+let killFeedIdCounter = 0;
+let cyberSoulIdCounter = 0;
+
 export const useGameStore = create<GameStore>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
-
   screen: 'login',
   setScreen: (screen) => set({ screen }),
-
   battle: { ...initialBattle },
   setBattle: (battle) => set((state) => ({ battle: { ...state.battle, ...battle } })),
-  resetBattle: () => set({
-    battle: { ...initialBattle },
-    health: 1000,
-    isDowned: false,
-    respawnCount: 0,
-    damageDealt: 0,
-    damageTaken: 0,
-    cyberSoulsCollected: 0,
-    cyberSoulsLost: 0,
-    supportScore: 0,
-  }),
+  resetBattle: () => {
+    killFeedIdCounter = 0;
+    cyberSoulIdCounter = 0;
+    set({
+      battle: { ...initialBattle },
+      health: 1000,
+      maxHealth: 1000,
+      isDowned: false,
+      respawnCount: 0,
+      respawnTimer: 0,
+      ammo: 30,
+      damageDealt: 0,
+      damageTaken: 0,
+      kills: 0,
+      deaths: 0,
+      cyberSoulsCollected: 0,
+      cyberSoulsLost: 0,
+      supportScore: 0,
+      gatesDestroyed: 0,
+      perfectVictory: false,
+      bots: createInitialBots(),
+      cyberSouls: [],
+      cyberGates: createInitialGates(),
+      killFeed: [],
+    });
+  },
 
   health: 1000,
-  setHealth: (health) => set({ health }),
+  maxHealth: 1000,
+  setHealth: (health) => set({ health: Math.max(0, Math.min(1000, health)) }),
   isDowned: false,
   setIsDowned: (isDowned) => set({ isDowned }),
   respawnCount: 0,
   incrementRespawn: () => set((s) => ({ respawnCount: s.respawnCount + 1 })),
+  respawnTimer: 0,
+  setRespawnTimer: (respawnTimer) => set({ respawnTimer }),
+
+  ammo: 30,
+  maxAmmo: 30,
+  setAmmo: (ammo) => set({ ammo }),
+  reload: () => set((s) => ({ ammo: s.maxAmmo })),
 
   damageDealt: 0,
   damageTaken: 0,
+  kills: 0,
+  deaths: 0,
   cyberSoulsCollected: 0,
   cyberSoulsLost: 0,
   supportScore: 0,
+  gatesDestroyed: 0,
+  perfectVictory: false,
   addDamageDealt: (amount) => set((s) => ({ damageDealt: s.damageDealt + amount })),
   addDamageTaken: (amount) => set((s) => ({ damageTaken: s.damageTaken + amount })),
+  addKill: () => set((s) => ({ kills: s.kills + 1 })),
+  addDeath: () => set((s) => ({ deaths: s.deaths + 1 })),
   addCyberSoul: () => set((s) => ({ cyberSoulsCollected: s.cyberSoulsCollected + 1 })),
   loseCyberSoul: () => set((s) => ({ cyberSoulsLost: s.cyberSoulsLost + 1 })),
   addSupportScore: (amount) => set((s) => ({ supportScore: s.supportScore + amount })),
+  addGateDestroyed: () => set((s) => ({ gatesDestroyed: s.gatesDestroyed + 1 })),
+
+  bots: createInitialBots(),
+  setBots: (bots) => set({ bots }),
+  updateBot: (id, data) => set((s) => ({
+    bots: s.bots.map((b) => b.id === id ? { ...b, ...data } : b),
+  })),
+
+  cyberSouls: [],
+  addCyberSoulDrop: (soul) => set((s) => ({
+    cyberSouls: [...s.cyberSouls, { ...soul, id: cyberSoulIdCounter++ }],
+  })),
+  collectCyberSoul: (id) => set((s) => ({
+    cyberSouls: s.cyberSouls.map((soul) =>
+      soul.id === id ? { ...soul, collected: true } : soul
+    ),
+  })),
+
+  cyberGates: createInitialGates(),
+  setCyberGates: (cyberGates) => set({ cyberGates }),
+  damageGate: (id, amount) => set((s) => ({
+    cyberGates: s.cyberGates.map((gate) => {
+      if (gate.id !== id) return gate;
+      const newHealth = Math.max(0, gate.health - amount);
+      return {
+        ...gate,
+        health: newHealth,
+        isDestroyed: newHealth <= 0,
+        respawnTimer: newHealth <= 0 ? 90 : gate.respawnTimer,
+      };
+    }),
+  })),
+  respawnGate: (id) => set((s) => ({
+    cyberGates: s.cyberGates.map((gate) =>
+      gate.id === id ? { ...gate, health: gate.maxHealth, isDestroyed: false, respawnTimer: 0 } : gate
+    ),
+  })),
+
+  killFeed: [],
+  addKillFeedEntry: (entry) => set((s) => ({
+    killFeed: [
+      { ...entry, id: killFeedIdCounter++, timestamp: Date.now() },
+      ...s.killFeed,
+    ].slice(0, 8),
+  })),
+
+  damageTeamLife: (team, amount) => set((s) => ({
+    battle: {
+      ...s.battle,
+      teamAlphaLife: team === 'alpha' ? Math.max(0, s.battle.teamAlphaLife - amount) : s.battle.teamAlphaLife,
+      teamBravoLife: team === 'bravo' ? Math.max(0, s.battle.teamBravoLife - amount) : s.battle.teamBravoLife,
+    },
+  })),
 
   isPointerLocked: false,
   setPointerLocked: (isPointerLocked) => set({ isPointerLocked }),
-
   sensitivity: 0.002,
   setSensitivity: (sensitivity) => set({ sensitivity }),
 }));

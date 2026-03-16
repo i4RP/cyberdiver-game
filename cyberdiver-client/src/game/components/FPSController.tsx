@@ -10,6 +10,7 @@ const GRAVITY = -20;
 const PLAYER_HEIGHT = 1.7;
 const DASH_DURATION = 0.3;
 const DASH_COOLDOWN = 2;
+const RESPAWN_TIME = 5;
 
 interface KeyState {
   forward: boolean;
@@ -39,18 +40,44 @@ export default function FPSController() {
   const setPointerLocked = useGameStore((s) => s.setPointerLocked);
   const screen = useGameStore((s) => s.screen);
 
-  // Set initial camera position
+  // Down/respawn state
+  const isDowned = useGameStore((s) => s.isDowned);
+  const setIsDowned = useGameStore((s) => s.setIsDowned);
+  const setHealth = useGameStore((s) => s.setHealth);
+  const addDamageTaken = useGameStore((s) => s.addDamageTaken);
+  const incrementRespawn = useGameStore((s) => s.incrementRespawn);
+  const addDeath = useGameStore((s) => s.addDeath);
+  const loseCyberSoul = useGameStore((s) => s.loseCyberSoul);
+  const addCyberSoulDrop = useGameStore((s) => s.addCyberSoulDrop);
+  const respawnTimer = useGameStore((s) => s.respawnTimer);
+  const setRespawnTimer = useGameStore((s) => s.setRespawnTimer);
+  const battle = useGameStore((s) => s.battle);
+  const damageTeamLife = useGameStore((s) => s.damageTeamLife);
+
+  // Bot damage tracking
+  const botDamageTimer = useRef(0);
+
+  // Set initial camera position based on gate
   useEffect(() => {
-    camera.position.set(-40, PLAYER_HEIGHT, 0);
+    const gatePositions: Record<string, [number, number]> = {
+      'A': [-43, -20],
+      'B': [-43, -10],
+      'C': [-43, 0],
+      'D': [-43, 10],
+      'E': [-43, 20],
+    };
+    const gate = battle.gate || 'C';
+    const pos = gatePositions[gate] || gatePositions['C'];
+    camera.position.set(pos[0], PLAYER_HEIGHT, pos[1]);
     euler.current.setFromQuaternion(camera.quaternion);
-  }, [camera]);
+  }, [camera, battle.gate]);
 
   // Pointer lock
   const requestPointerLock = useCallback(() => {
-    if (screen === 'battle') {
+    if (screen === 'battle' && !isDowned) {
       gl.domElement.requestPointerLock();
     }
-  }, [gl, screen]);
+  }, [gl, screen, isDowned]);
 
   useEffect(() => {
     const onPointerLockChange = () => {
@@ -60,20 +87,19 @@ export default function FPSController() {
     return () => document.removeEventListener('pointerlockchange', onPointerLockChange);
   }, [gl, setPointerLocked]);
 
-  // Mouse movement for camera rotation
+  // Mouse movement
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
-      if (!isPointerLocked) return;
+      if (!isPointerLocked || isDowned) return;
       euler.current.setFromQuaternion(camera.quaternion);
       euler.current.y -= e.movementX * sensitivity;
       euler.current.x -= e.movementY * sensitivity;
       euler.current.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, euler.current.x));
       camera.quaternion.setFromEuler(euler.current);
     };
-
     document.addEventListener('mousemove', onMouseMove);
     return () => document.removeEventListener('mousemove', onMouseMove);
-  }, [camera, sensitivity, isPointerLocked]);
+  }, [camera, sensitivity, isPointerLocked, isDowned]);
 
   // Keyboard input
   useEffect(() => {
@@ -113,12 +139,80 @@ export default function FPSController() {
   }, [gl, requestPointerLock]);
 
   useFrame((_, delta) => {
-    if (screen !== 'battle' || !isPointerLocked) return;
+    if (screen !== 'battle') return;
+
+    // Handle downed state - respawn countdown
+    if (isDowned) {
+      const newTimer = respawnTimer - delta;
+      if (newTimer <= 0) {
+        // Respawn
+        setIsDowned(false);
+        setRespawnTimer(0);
+        setHealth(1000);
+        incrementRespawn();
+
+        // Move to spawn position
+        const spawnX = (battle.team === 'bravo') ? 40 : -40;
+        const spawnZ = (Math.random() - 0.5) * 30;
+        camera.position.set(spawnX, PLAYER_HEIGHT, spawnZ);
+      } else {
+        setRespawnTimer(newTimer);
+      }
+      return; // No movement while downed
+    }
+
+    if (!isPointerLocked) return;
+
+    // Simulate bot damage to player (enemy bots shoot at player periodically)
+    botDamageTimer.current -= delta;
+    if (botDamageTimer.current <= 0) {
+      botDamageTimer.current = 2 + Math.random() * 3; // Every 2-5 seconds
+      const bots = useGameStore.getState().bots;
+      const playerTeam = battle.team || 'alpha';
+      const enemyBots = bots.filter((b) => b.team !== playerTeam && !b.isDowned && b.isAlive);
+
+      if (enemyBots.length > 0) {
+        // Check if any enemy bot is close enough to shoot
+        const closestBot = enemyBots.reduce((closest, bot) => {
+          const botPos = new THREE.Vector3(...bot.position);
+          const dist = camera.position.distanceTo(botPos);
+          if (!closest || dist < closest.dist) return { bot, dist };
+          return closest;
+        }, null as { bot: typeof enemyBots[0]; dist: number } | null);
+
+        if (closestBot && closestBot.dist < 30) {
+          const damage = Math.floor(30 + Math.random() * 50); // 30-80 damage
+          const currentHealth = useGameStore.getState().health;
+          const newHealth = currentHealth - damage;
+          addDamageTaken(damage);
+
+          if (newHealth <= 0) {
+            // Player downed!
+            setHealth(0);
+            setIsDowned(true);
+            setRespawnTimer(RESPAWN_TIME);
+            addDeath();
+            loseCyberSoul();
+
+            // Drop cyber soul at player position
+            addCyberSoulDrop({
+              position: [camera.position.x, 0.5, camera.position.z],
+              collected: false,
+              sourceTeam: (playerTeam as 'alpha' | 'bravo'),
+            });
+
+            // Damage own team life
+            damageTeamLife(playerTeam as 'alpha' | 'bravo', 500);
+          } else {
+            setHealth(newHealth);
+          }
+        }
+      }
+    }
 
     const speed = isDashing.current ? DASH_SPEED : MOVE_SPEED;
     direction.current.set(0, 0, 0);
 
-    // Get camera forward/right vectors (horizontal only)
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward);
     forward.y = 0;
@@ -150,32 +244,26 @@ export default function FPSController() {
       }
     }
 
-    // Apply horizontal movement
     velocity.current.x = direction.current.x * speed;
     velocity.current.z = direction.current.z * speed;
 
-    // Jump
     if (keys.current.jump && isOnGround.current) {
       velocity.current.y = JUMP_FORCE;
       isOnGround.current = false;
     }
 
-    // Gravity
     velocity.current.y += GRAVITY * delta;
 
-    // Update position
     camera.position.x += velocity.current.x * delta;
     camera.position.z += velocity.current.z * delta;
     camera.position.y += velocity.current.y * delta;
 
-    // Ground collision
     if (camera.position.y < PLAYER_HEIGHT) {
       camera.position.y = PLAYER_HEIGHT;
       velocity.current.y = 0;
       isOnGround.current = true;
     }
 
-    // Map boundaries
     const BOUND = 48;
     camera.position.x = Math.max(-BOUND, Math.min(BOUND, camera.position.x));
     camera.position.z = Math.max(-BOUND, Math.min(BOUND, camera.position.z));
