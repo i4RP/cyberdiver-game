@@ -1,4 +1,5 @@
 import { useGameStore } from '../../stores/gameStore';
+import { getWeapon } from '../data/weapons';
 
 export default function HUD() {
   const health = useGameStore((s) => s.health);
@@ -17,6 +18,13 @@ export default function HUD() {
   const killFeed = useGameStore((s) => s.killFeed);
   const cyberGates = useGameStore((s) => s.cyberGates);
   const gatesDestroyed = useGameStore((s) => s.gatesDestroyed);
+  const currentWeapon = useGameStore((s) => s.currentWeapon);
+  const currentWeaponIndex = useGameStore((s) => s.currentWeaponIndex);
+  const loadout = useGameStore((s) => s.loadout);
+  const isReloading = useGameStore((s) => s.isReloading);
+  const reloadTimer = useGameStore((s) => s.reloadTimer);
+  const isZoomed = useGameStore((s) => s.isZoomed);
+  const grenadeCount = useGameStore((s) => s.grenadeCount);
 
   if (screen !== 'battle') return null;
 
@@ -98,7 +106,7 @@ export default function HUD() {
         })}
       </div>
 
-      {/* Bottom left - Player health + ammo */}
+      {/* Bottom left - Player health + weapon info */}
       <div className="absolute bottom-6 left-6">
         <div className="bg-black/60 border border-cyan-800 p-3 rounded">
           <div className="text-cyan-300 text-xs mb-1 font-mono">HEALTH</div>
@@ -106,12 +114,62 @@ export default function HUD() {
             <div className={`h-full ${healthColor} transition-all`} style={{ width: `${healthPercent}%` }} />
           </div>
           <div className="text-white text-sm font-mono mt-1">{health} / {maxHealth}</div>
+
+          {/* Weapon info */}
           <div className="mt-2 pt-2 border-t border-gray-700">
-            <div className="text-cyan-300 text-xs font-mono">AMMO</div>
-            <div className="text-white text-lg font-mono font-bold">
-              {ammo} <span className="text-gray-500 text-sm">/ {maxAmmo}</span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-mono font-bold" style={{ color: currentWeapon.accentColor }}>
+                {currentWeapon.name}
+              </span>
             </div>
-            <div className="text-gray-500 text-xs font-mono">R to reload</div>
+            {currentWeapon.fireMode === 'throw' ? (
+              <div className="text-white text-lg font-mono font-bold">
+                {grenadeCount} <span className="text-gray-500 text-sm">grenades</span>
+              </div>
+            ) : currentWeapon.fireMode === 'deploy' ? (
+              <div className="text-white text-lg font-mono font-bold">
+                {ammo} <span className="text-gray-500 text-sm">charges</span>
+              </div>
+            ) : (
+              <>
+                <div className="text-white text-lg font-mono font-bold">
+                  {ammo} <span className="text-gray-500 text-sm">/ {maxAmmo}</span>
+                </div>
+                {isReloading && (
+                  <div className="mt-1">
+                    <div className="text-yellow-400 text-xs font-mono mb-0.5">RELOADING...</div>
+                    <div className="w-full h-1.5 bg-gray-700 rounded overflow-hidden">
+                      <div
+                        className="h-full bg-yellow-400 transition-all"
+                        style={{ width: `${((currentWeapon.reloadTime - reloadTimer) / currentWeapon.reloadTime) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {!isReloading && <div className="text-gray-500 text-xs font-mono">R to reload</div>}
+              </>
+            )}
+          </div>
+
+          {/* Weapon loadout slots */}
+          <div className="mt-2 pt-2 border-t border-gray-700 flex gap-1">
+            {loadout.map((weaponId, index) => {
+              const w = getWeapon(weaponId);
+              const isActive = index === currentWeaponIndex;
+              return (
+                <div
+                  key={weaponId}
+                  className={`px-2 py-1 rounded text-xs font-mono border ${
+                    isActive
+                      ? 'border-cyan-400 bg-cyan-900/40 text-white'
+                      : 'border-gray-700 bg-gray-800/40 text-gray-500'
+                  }`}
+                >
+                  <span className="text-gray-400 mr-1">{index + 1}</span>
+                  {w.name.split(' ')[0]}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -127,6 +185,21 @@ export default function HUD() {
           <div className="text-white">RESPAWN: <span className="text-gray-400">{respawnCount}</span></div>
         </div>
       </div>
+
+      {/* Sniper zoom overlay */}
+      {isZoomed && currentWeapon.zoomLevel && (
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 border-4 border-black/80" />
+          <div className="absolute top-1/2 left-0 right-0 h-px bg-red-500/50" />
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-red-500/50" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="w-48 h-48 border-2 border-red-500/30 rounded-full" />
+          </div>
+          <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded">
+            <span className="text-red-400 text-xs font-mono">{currentWeapon.zoomLevel}x ZOOM</span>
+          </div>
+        </div>
+      )}
 
       {/* DOWNED overlay */}
       {isDowned && (
@@ -152,7 +225,8 @@ export default function HUD() {
           <div className="bg-black/80 border border-cyan-500 px-8 py-4 rounded text-center">
             <div className="text-cyan-400 text-xl font-bold mb-2">CYBERDIVER</div>
             <div className="text-white text-sm">Click to enter battle</div>
-            <div className="text-gray-400 text-xs mt-2">WASD: Move | SPACE: Jump | SHIFT: Dash | MOUSE: Aim | CLICK: Shoot | R: Reload</div>
+            <div className="text-gray-400 text-xs mt-2">WASD: Move | SPACE: Jump | SHIFT: Dash | MOUSE: Aim | CLICK: Shoot</div>
+            <div className="text-gray-400 text-xs">R: Reload | 1-3: Switch Weapon | Scroll: Cycle | Right-Click: Zoom (Sniper)</div>
           </div>
         </div>
       )}

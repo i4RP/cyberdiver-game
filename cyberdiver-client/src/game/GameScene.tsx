@@ -9,6 +9,7 @@ import WeaponView from './components/WeaponView';
 import BattleTimer from './components/BattleTimer';
 import Crosshair from './components/Crosshair';
 import HUD from './components/HUD';
+import Deployables from './components/Deployables';
 import WebSocketSync from './systems/WebSocketSync';
 
 export default function GameScene() {
@@ -47,6 +48,7 @@ export default function GameScene() {
         <CyberSouls />
         <EnemyPlayers />
         <WeaponView />
+        <Deployables />
         <BattleTimer />
       </Canvas>
       <WebSocketSync />
