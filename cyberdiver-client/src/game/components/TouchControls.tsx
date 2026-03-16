@@ -11,16 +11,20 @@ export const touchInput = {
   jumping: false,
   reloading: false,
   dashing: false,
-  isMobile: false,
+  isMobile: isMobileDeviceCheck(),
 };
 
-export function isMobileDevice(): boolean {
+function isMobileDeviceCheck(): boolean {
   if (typeof window === 'undefined') return false;
   return (
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
     /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   );
+}
+
+export function isMobileDevice(): boolean {
+  return isMobileDeviceCheck();
 }
 
 export default function TouchControls() {
@@ -48,17 +52,15 @@ export default function TouchControls() {
     touchInput.isMobile = isMobileDevice();
   }, []);
 
-  // Prevent default touch behaviors on game screen
+  // Prevent default touch behaviors on game screen (only touchmove to prevent scroll)
   useEffect(() => {
-    if (screen !== 'battle') return;
-    const preventDefault = (e: TouchEvent) => {
+    if (screen !== 'battle' || !touchInput.isMobile) return;
+    const preventScroll = (e: TouchEvent) => {
       e.preventDefault();
     };
-    document.addEventListener('touchmove', preventDefault, { passive: false });
-    document.addEventListener('touchstart', preventDefault, { passive: false });
+    document.addEventListener('touchmove', preventScroll, { passive: false });
     return () => {
-      document.removeEventListener('touchmove', preventDefault);
-      document.removeEventListener('touchstart', preventDefault);
+      document.removeEventListener('touchmove', preventScroll);
     };
   }, [screen]);
 

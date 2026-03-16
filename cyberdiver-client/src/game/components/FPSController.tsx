@@ -127,7 +127,9 @@ export default function FPSController() {
     };
 
     const onClick = () => {
-      requestPointerLock();
+      if (!touchInput.isMobile) {
+        requestPointerLock();
+      }
     };
 
     document.addEventListener('keydown', onKeyDown);
