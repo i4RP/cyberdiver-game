@@ -20,6 +20,19 @@ function App() {
     if (!authenticated || !privyUser) return;
 
     try {
+      // First try existing stored token for fast resume
+      const existingToken = api.getToken();
+      if (existingToken) {
+        try {
+          const profile = await api.getProfile();
+          setUser(profile);
+          setScreen('lobby');
+          return;
+        } catch {
+          // Stored token expired, re-authenticate below
+        }
+      }
+
       const privyToken = await getAccessToken();
       if (!privyToken) return;
 
@@ -58,10 +71,20 @@ function App() {
     }
   }, [ready, authenticated, privyUser, syncWithBackend, setUser, setScreen]);
 
+  // Show loading screen while Privy is initializing (not login screen)
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center">
         <div className="text-cyan-400 text-xl animate-pulse">INITIALIZING...</div>
+      </div>
+    );
+  }
+
+  // Show loading while authenticated user is being synced (prevents login flash)
+  if (ready && authenticated && screen === 'login') {
+    return (
+      <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center">
+        <div className="text-cyan-400 text-xl animate-pulse">LOADING...</div>
       </div>
     );
   }
