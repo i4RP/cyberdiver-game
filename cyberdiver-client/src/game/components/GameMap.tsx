@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import * as THREE from 'three';
 import { useGameStore } from '../../stores/gameStore';
 
 function Building({ position, size, color = '#334155' }: {
@@ -6,10 +8,31 @@ function Building({ position, size, color = '#334155' }: {
   color?: string;
 }) {
   return (
-    <mesh position={position} castShadow receiveShadow>
-      <boxGeometry args={size} />
-      <meshStandardMaterial color={color} metalness={0.3} roughness={0.7} />
-    </mesh>
+    <group position={position}>
+      {/* Main building body */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+      </mesh>
+      {/* Neon edge lines on top */}
+      <mesh position={[0, size[1] / 2 + 0.02, 0]}>
+        <boxGeometry args={[size[0] + 0.05, 0.04, size[2] + 0.05]} />
+        <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={0.5} />
+      </mesh>
+      {/* Window-like panels on front */}
+      {size[1] > 4 && (
+        <>
+          <mesh position={[0, size[1] * 0.15, size[2] / 2 + 0.01]}>
+            <planeGeometry args={[size[0] * 0.6, size[1] * 0.25]} />
+            <meshStandardMaterial color="#0a1628" emissive="#1a3a5c" emissiveIntensity={0.3} metalness={0.9} roughness={0.1} />
+          </mesh>
+          <mesh position={[0, -size[1] * 0.15, size[2] / 2 + 0.01]}>
+            <planeGeometry args={[size[0] * 0.6, size[1] * 0.25]} />
+            <meshStandardMaterial color="#0a1628" emissive="#1a3a5c" emissiveIntensity={0.3} metalness={0.9} roughness={0.1} />
+          </mesh>
+        </>
+      )}
+    </group>
   );
 }
 
@@ -93,16 +116,64 @@ function CyberGateObject({ gateId }: { gateId: string }) {
 }
 
 export default function GameMap() {
+  // Create a procedural grid texture for the floor
+  const floorTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    // Dark base
+    ctx.fillStyle = '#0a0a1e';
+    ctx.fillRect(0, 0, 512, 512);
+    // Grid lines
+    ctx.strokeStyle = '#1a3a6a';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 512; i += 32) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 512);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(512, i);
+      ctx.stroke();
+    }
+    // Brighter major grid lines
+    ctx.strokeStyle = '#2a5a9a';
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= 512; i += 128) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 512);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(512, i);
+      ctx.stroke();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(20, 20);
+    return texture;
+  }, []);
+
   return (
     <group>
-      {/* Ground */}
+      {/* Reflective cyber floor with grid texture */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
         <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#1a1a2e" metalness={0.1} roughness={0.9} />
+        <meshStandardMaterial
+          map={floorTexture}
+          color="#1a1a3e"
+          metalness={0.7}
+          roughness={0.2}
+          envMapIntensity={0.5}
+        />
       </mesh>
 
-      {/* Grid overlay */}
-      <gridHelper args={[200, 40, '#0f3460', '#0f3460']} position={[0, 0.01, 0]} />
+      {/* Subtle grid overlay */}
+      <gridHelper args={[200, 40, '#0f3460', '#0a1a30']} position={[0, 0.01, 0]} />
 
       {/* Central area buildings */}
       <Building position={[0, 4, 0]} size={[8, 8, 8]} color="#16213e" />

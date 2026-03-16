@@ -1,10 +1,15 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../../stores/gameStore';
 
 const BOT_SPEED = 3;
 const BOT_RESPAWN_TIME = 5;
+
+// Preload models
+useGLTF.preload('/models/soldier.glb');
+useGLTF.preload('/models/xbot.glb');
 
 function PlayerModel({ position, team, health, maxHealth, isDowned }: {
   position: [number, number, number];
@@ -16,14 +21,41 @@ function PlayerModel({ position, team, health, maxHealth, isDowned }: {
   const color = team === 'alpha' ? '#00aaff' : '#ff4444';
   const healthPercent = health / maxHealth;
 
+  // Load GLTF model - Soldier for alpha, Xbot for bravo
+  const modelPath = team === 'alpha' ? '/models/soldier.glb' : '/models/xbot.glb';
+  const { scene } = useGLTF(modelPath);
+
+  // Clone the scene so each bot has its own instance
+  const clonedScene = useMemo(() => {
+    const clone = scene.clone(true);
+    // Apply team color tint to all meshes
+    clone.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        const oldMat = mesh.material as THREE.MeshStandardMaterial;
+        const newMat = oldMat.clone();
+        // Tint with team color
+        const teamColor = new THREE.Color(color);
+        newMat.emissive = teamColor;
+        newMat.emissiveIntensity = 0.15;
+        newMat.metalness = Math.min(oldMat.metalness + 0.2, 1.0);
+        mesh.material = newMat;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        // Set name for raycast hit detection
+        mesh.name = 'enemy-head';
+      }
+    });
+    return clone;
+  }, [scene, color]);
+
   if (isDowned) {
     return (
       <group position={[position[0], 0.2, position[2]]}>
-        {/* Downed body - lying flat */}
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-          <boxGeometry args={[0.4, 1.2, 0.6]} />
-          <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} opacity={0.5} transparent />
-        </mesh>
+        {/* Downed model - lying flat */}
+        <group rotation={[Math.PI / 2, 0, 0]} scale={[0.8, 0.8, 0.8]}>
+          <primitive object={clonedScene.clone(true)} />
+        </group>
         {/* Down indicator */}
         <mesh position={[0, 0.8, 0]}>
           <sphereGeometry args={[0.15, 8, 8]} />
@@ -35,18 +67,12 @@ function PlayerModel({ position, team, health, maxHealth, isDowned }: {
 
   return (
     <group position={position}>
-      {/* Body */}
-      <mesh position={[0, 0.8, 0]} castShadow>
-        <boxGeometry args={[0.6, 1.2, 0.4]} />
-        <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-      </mesh>
-      {/* Head - used as hit target (name for raycast identification) */}
-      <mesh position={[0, 1.6, 0]} castShadow name="enemy-head">
-        <boxGeometry args={[0.35, 0.35, 0.35]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
-      </mesh>
+      {/* GLTF Character Model */}
+      <group scale={[0.9, 0.9, 0.9]} position={[0, 0, 0]}>
+        <primitive object={clonedScene} />
+      </group>
       {/* Health bar */}
-      <group position={[0, 2.1, 0]}>
+      <group position={[0, 2.2, 0]}>
         <mesh>
           <planeGeometry args={[0.8, 0.08]} />
           <meshBasicMaterial color="#333333" />
@@ -56,8 +82,8 @@ function PlayerModel({ position, team, health, maxHealth, isDowned }: {
           <meshBasicMaterial color={healthPercent > 0.5 ? '#00ff88' : '#ff4444'} />
         </mesh>
       </group>
-      {/* Team indicator */}
-      <pointLight position={[0, 1.6, 0.3]} color={color} intensity={0.3} distance={3} />
+      {/* Team indicator glow */}
+      <pointLight position={[0, 1.6, 0.3]} color={color} intensity={0.5} distance={5} />
     </group>
   );
 }
