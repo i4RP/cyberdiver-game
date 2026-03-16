@@ -16,6 +16,8 @@ export const touchInput = {
 
 function isMobileDeviceCheck(): boolean {
   if (typeof window === 'undefined') return false;
+  // Dev mode: ?mobile=1 forces mobile mode for testing
+  if (new URLSearchParams(window.location.search).get('mobile') === '1') return true;
   return (
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
@@ -156,35 +158,36 @@ export default function TouchControls() {
   }, []);
 
   // Action button handlers
-  const handleShootStart = useCallback((e: React.TouchEvent) => {
+  // Unified handlers that work with both touch and mouse events (for dev testing)
+  const handleShootStart = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     touchInput.shooting = true;
   }, []);
 
-  const handleShootEnd = useCallback((e: React.TouchEvent) => {
+  const handleShootEnd = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     touchInput.shooting = false;
   }, []);
 
-  const handleJump = useCallback((e: React.TouchEvent) => {
+  const handleJump = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     touchInput.jumping = true;
     setTimeout(() => { touchInput.jumping = false; }, 200);
   }, []);
 
-  const handleReload = useCallback((e: React.TouchEvent) => {
+  const handleReload = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     touchInput.reloading = true;
     setTimeout(() => { touchInput.reloading = false; }, 200);
   }, []);
 
-  const handleDash = useCallback((e: React.TouchEvent) => {
+  const handleDash = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     touchInput.dashing = true;
     setTimeout(() => { touchInput.dashing = false; }, 400);
   }, []);
 
-  const handleSwitchWeapon = useCallback((e: React.TouchEvent) => {
+  const handleSwitchWeapon = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     const next = (currentWeaponIndex + 1) % loadout.length;
     switchWeapon(next);
@@ -197,71 +200,77 @@ export default function TouchControls() {
       {/* Left side - Movement joystick */}
       <div
         ref={joystickRef}
-        className="absolute bottom-20 left-8 w-32 h-32 pointer-events-auto"
+        className="absolute bottom-4 left-4 w-28 h-28 pointer-events-auto"
         onTouchStart={handleJoystickStart}
         onTouchMove={handleJoystickMove}
         onTouchEnd={handleJoystickEnd}
         onTouchCancel={handleJoystickEnd}
       >
         {/* Joystick base */}
-        <div className="absolute inset-0 rounded-full border-2 border-cyan-500/40 bg-black/30" />
+        <div className="absolute inset-0 rounded-full border-2 border-cyan-500/40 bg-black/20" />
         {/* Joystick knob */}
         <div
           ref={joystickKnobRef}
-          className="absolute top-1/2 left-1/2 -mt-6 -ml-6 w-12 h-12 rounded-full bg-cyan-500/60 border-2 border-cyan-400"
+          className="absolute top-1/2 left-1/2 -mt-5 -ml-5 w-10 h-10 rounded-full bg-cyan-500/60 border-2 border-cyan-400"
           style={{ transition: 'none' }}
         />
       </div>
 
-      {/* Right side - Aim area (invisible touch zone) */}
+      {/* Right side - Aim area (invisible touch zone for camera control) */}
       <div
         ref={aimAreaRef}
-        className="absolute top-0 right-0 w-1/2 h-3/4 pointer-events-auto"
+        className="absolute top-0 right-0 w-3/5 h-3/4 pointer-events-auto"
         onTouchStart={handleAimStart}
         onTouchMove={handleAimMove}
         onTouchEnd={handleAimEnd}
         onTouchCancel={handleAimEnd}
       />
 
-      {/* Shoot button - large, right side */}
+      {/* Right side action buttons - ergonomic layout for thumb reach */}
+      {/* FIRE button - large, bottom-right corner */}
       <div
-        className="absolute bottom-20 right-8 w-20 h-20 pointer-events-auto"
+        className="absolute bottom-4 right-4 w-16 h-16 pointer-events-auto"
         onTouchStart={handleShootStart}
         onTouchEnd={handleShootEnd}
         onTouchCancel={handleShootEnd}
+        onMouseDown={handleShootStart}
+        onMouseUp={handleShootEnd}
       >
         <div className={`w-full h-full rounded-full border-2 flex items-center justify-center ${
           touchInput.shooting ? 'bg-red-600/80 border-red-400' : 'bg-red-900/50 border-red-500/60'
         }`}>
-          <div className="w-4 h-4 bg-red-400 rounded-full" />
+          <div className="w-3 h-3 bg-red-400 rounded-full" />
         </div>
-        <div className="text-center text-red-400 text-xs mt-1 font-mono">FIRE</div>
+        <div className="text-center text-red-400 text-xs mt-0.5 font-mono">FIRE</div>
       </div>
 
-      {/* Jump button */}
+      {/* JMP button - above and left of FIRE */}
       <div
-        className="absolute bottom-44 right-32 w-14 h-14 pointer-events-auto"
+        className="absolute bottom-24 right-20 w-12 h-12 pointer-events-auto"
         onTouchStart={handleJump}
+        onClick={handleJump}
       >
         <div className="w-full h-full rounded-full border-2 border-cyan-500/50 bg-black/40 flex items-center justify-center">
           <span className="text-cyan-400 text-xs font-bold">JMP</span>
         </div>
       </div>
 
-      {/* Dash button */}
+      {/* DSH button - above FIRE */}
       <div
-        className="absolute bottom-44 right-8 w-14 h-14 pointer-events-auto"
+        className="absolute bottom-24 right-4 w-12 h-12 pointer-events-auto"
         onTouchStart={handleDash}
+        onClick={handleDash}
       >
         <div className="w-full h-full rounded-full border-2 border-yellow-500/50 bg-black/40 flex items-center justify-center">
           <span className="text-yellow-400 text-xs font-bold">DSH</span>
         </div>
       </div>
 
-      {/* Reload button */}
+      {/* RLD button - left of FIRE */}
       <div
-        className="absolute bottom-20 right-32 w-14 h-14 pointer-events-auto"
+        className="absolute bottom-4 right-20 w-12 h-12 pointer-events-auto"
         onTouchStart={handleReload}
+        onClick={handleReload}
       >
         <div className={`w-full h-full rounded-full border-2 flex items-center justify-center ${
           isReloading ? 'border-yellow-400/80 bg-yellow-900/40' : 'border-gray-500/50 bg-black/40'
@@ -272,10 +281,11 @@ export default function TouchControls() {
 
       {/* Weapon switch button - top right */}
       <div
-        className="absolute top-20 right-4 pointer-events-auto"
+        className="absolute top-14 right-2 pointer-events-auto"
         onTouchStart={handleSwitchWeapon}
+        onClick={handleSwitchWeapon}
       >
-        <div className="px-3 py-2 rounded border border-cyan-600/50 bg-black/60">
+        <div className="px-2 py-1.5 rounded border border-cyan-600/50 bg-black/60">
           <span className="text-xs font-mono" style={{ color: currentWeapon.accentColor }}>
             {currentWeapon.name.split(' ')[0]}
           </span>

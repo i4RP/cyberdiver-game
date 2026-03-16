@@ -65,6 +65,23 @@ function App() {
     if (ready && authenticated && privyUser) {
       syncWithBackend();
     } else if (ready && !authenticated) {
+      // Dev mode: ?mobile=1&dev=1 skips auth for mobile testing
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('dev') === '1') {
+        setUser({
+          id: 'dev-user',
+          username: 'DevTester',
+          display_name: 'DevTester',
+          is_guest: true,
+          rank: 'ROOKIE',
+          total_bp: 0,
+          wallet_address: null,
+          wallet_balance_matic: null,
+          created_at: new Date().toISOString(),
+        });
+        setScreen('lobby');
+        return;
+      }
       // User logged out or not yet logged in
       api.clearToken();
       setUser(null);

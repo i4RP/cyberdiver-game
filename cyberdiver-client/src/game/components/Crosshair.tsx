@@ -1,10 +1,13 @@
 import { useGameStore } from '../../stores/gameStore';
+import { touchInput } from './TouchControls';
 
 export default function Crosshair() {
   const isPointerLocked = useGameStore((s) => s.isPointerLocked);
   const screen = useGameStore((s) => s.screen);
 
-  if (!isPointerLocked || screen !== 'battle') return null;
+  if (screen !== 'battle') return null;
+  // Show crosshair on mobile (no pointer lock) or desktop (with pointer lock)
+  if (!touchInput.isMobile && !isPointerLocked) return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">

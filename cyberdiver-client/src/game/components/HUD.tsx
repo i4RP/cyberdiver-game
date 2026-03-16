@@ -111,14 +111,14 @@ export default function HUD() {
         })}
       </div>
 
-      {/* Bottom left - Player health + weapon info */}
-      <div className={`absolute ${isMobile ? 'bottom-2 left-2' : 'bottom-6 left-6'}`}>
-        <div className={`bg-black/60 border border-cyan-800 rounded ${isMobile ? 'p-2' : 'p-3'}`}>
-          <div className="text-cyan-300 text-xs mb-1 font-mono">HEALTH</div>
-          <div className={`${isMobile ? 'w-28' : 'w-48'} h-3 md:h-4 bg-gray-800 rounded-sm overflow-hidden`}>
+      {/* Bottom left - Player health + weapon info (positioned above joystick on mobile) */}
+      <div className={`absolute ${isMobile ? 'bottom-36 left-2' : 'bottom-6 left-6'}`}>
+        <div className={`bg-black/60 border border-cyan-800 rounded ${isMobile ? 'p-1.5' : 'p-3'}`}>
+          <div className="text-cyan-300 text-xs mb-0.5 font-mono">HEALTH</div>
+          <div className={`${isMobile ? 'w-24' : 'w-48'} h-2 md:h-4 bg-gray-800 rounded-sm overflow-hidden`}>
             <div className={`h-full ${healthColor} transition-all`} style={{ width: `${healthPercent}%` }} />
           </div>
-          <div className="text-white text-xs md:text-sm font-mono mt-1">{health} / {maxHealth}</div>
+          <div className="text-white text-xs font-mono mt-0.5">{health} / {maxHealth}</div>
 
           {/* Weapon info */}
           <div className="mt-1 md:mt-2 pt-1 md:pt-2 border-t border-gray-700">
