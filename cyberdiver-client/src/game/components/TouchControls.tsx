@@ -195,12 +195,19 @@ export default function TouchControls() {
 
   if (screen !== 'battle' || !touchInput.isMobile) return null;
 
+  // Detect portrait vs landscape for adaptive layout
+  const isPortrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
+
   return (
     <div className="fixed inset-0 z-50 pointer-events-none">
       {/* Left side - Movement joystick */}
       <div
         ref={joystickRef}
-        className="absolute bottom-4 left-4 w-28 h-28 pointer-events-auto"
+        className={`absolute pointer-events-auto ${
+          isPortrait
+            ? 'bottom-6 left-4 w-24 h-24'
+            : 'bottom-4 left-4 w-28 h-28'
+        }`}
         onTouchStart={handleJoystickStart}
         onTouchMove={handleJoystickMove}
         onTouchEnd={handleJoystickEnd}
@@ -216,20 +223,27 @@ export default function TouchControls() {
         />
       </div>
 
-      {/* Right side - Aim area (invisible touch zone for camera control) */}
+      {/* Aim area (invisible touch zone for camera control) */}
       <div
         ref={aimAreaRef}
-        className="absolute top-0 right-0 w-3/5 h-3/4 pointer-events-auto"
+        className={`absolute pointer-events-auto ${
+          isPortrait
+            ? 'top-0 left-0 w-full h-[60%]'
+            : 'top-0 right-0 w-3/5 h-3/4'
+        }`}
         onTouchStart={handleAimStart}
         onTouchMove={handleAimMove}
         onTouchEnd={handleAimEnd}
         onTouchCancel={handleAimEnd}
       />
 
-      {/* Right side action buttons - ergonomic layout for thumb reach */}
-      {/* FIRE button - large, bottom-right corner */}
+      {/* FIRE button - large */}
       <div
-        className="absolute bottom-4 right-4 w-16 h-16 pointer-events-auto"
+        className={`absolute pointer-events-auto ${
+          isPortrait
+            ? 'bottom-6 right-4 w-16 h-16'
+            : 'bottom-4 right-4 w-16 h-16'
+        }`}
         onTouchStart={handleShootStart}
         onTouchEnd={handleShootEnd}
         onTouchCancel={handleShootEnd}
@@ -244,9 +258,13 @@ export default function TouchControls() {
         <div className="text-center text-red-400 text-xs mt-0.5 font-mono">FIRE</div>
       </div>
 
-      {/* JMP button - above and left of FIRE */}
+      {/* JMP button */}
       <div
-        className="absolute bottom-24 right-20 w-12 h-12 pointer-events-auto"
+        className={`absolute pointer-events-auto ${
+          isPortrait
+            ? 'bottom-24 right-20 w-11 h-11'
+            : 'bottom-24 right-20 w-12 h-12'
+        }`}
         onTouchStart={handleJump}
         onClick={handleJump}
       >
@@ -255,9 +273,13 @@ export default function TouchControls() {
         </div>
       </div>
 
-      {/* DSH button - above FIRE */}
+      {/* DSH button */}
       <div
-        className="absolute bottom-24 right-4 w-12 h-12 pointer-events-auto"
+        className={`absolute pointer-events-auto ${
+          isPortrait
+            ? 'bottom-24 right-4 w-11 h-11'
+            : 'bottom-24 right-4 w-12 h-12'
+        }`}
         onTouchStart={handleDash}
         onClick={handleDash}
       >
@@ -266,9 +288,13 @@ export default function TouchControls() {
         </div>
       </div>
 
-      {/* RLD button - left of FIRE */}
+      {/* RLD button */}
       <div
-        className="absolute bottom-4 right-20 w-12 h-12 pointer-events-auto"
+        className={`absolute pointer-events-auto ${
+          isPortrait
+            ? 'bottom-6 right-20 w-11 h-11'
+            : 'bottom-4 right-20 w-12 h-12'
+        }`}
         onTouchStart={handleReload}
         onClick={handleReload}
       >
