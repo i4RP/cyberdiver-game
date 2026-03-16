@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../../stores/gameStore';
+import { touchInput } from './TouchControls';
 
 interface BulletTrail {
   id: number;
@@ -149,7 +150,8 @@ export default function ShootingSystem() {
   }, [bots, battle, cyberGates, addDamageDealt, addKill, damageGate, addGateDestroyed, damageTeamLife]);
 
   const shoot = useCallback(() => {
-    if (!isPointerLocked || screen !== 'battle' || isDowned) return;
+    if (screen !== 'battle' || isDowned) return;
+    if (!touchInput.isMobile && !isPointerLocked) return;
     if (isReloading || weaponSwitchCooldown > 0) return;
 
     const now = performance.now() / 1000;
@@ -242,7 +244,9 @@ export default function ShootingSystem() {
     });
   }, [camera, scene, isPointerLocked, screen, isDowned, ammo, setAmmo, currentWeapon, isReloading, setIsReloading, setReloadTimer, weaponSwitchCooldown, battle, handleHitDetection, addDeployable, addSupportScore, grenadeCount, setGrenadeCount, reload]);
 
+  // Desktop: mouse click to shoot
   useEffect(() => {
+    if (touchInput.isMobile) return;
     const onMouseDown = (e: MouseEvent) => {
       if (e.button === 0) shoot();
     };
@@ -250,7 +254,30 @@ export default function ShootingSystem() {
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, [shoot]);
 
+  // Mobile: touch shoot via touchInput flag
+  const touchShootTimer = useRef(0);
+  useEffect(() => {
+    if (!touchInput.isMobile) return;
+  }, []);
+
   useFrame((_, delta) => {
+    // Mobile: touch shooting (continuous fire while holding)
+    if (touchInput.isMobile && touchInput.shooting) {
+      touchShootTimer.current -= delta;
+      if (touchShootTimer.current <= 0) {
+        shoot();
+        touchShootTimer.current = currentWeapon.fireRate;
+      }
+    }
+
+    // Mobile: touch reload
+    if (touchInput.isMobile && touchInput.reloading) {
+      if (!isReloading && ammo < currentWeapon.magazineSize && currentWeapon.fireMode !== 'deploy' && currentWeapon.fireMode !== 'throw') {
+        setIsReloading(true);
+        setReloadTimer(currentWeapon.reloadTime);
+      }
+    }
+
     // Reload timer
     if (isReloading && reloadTimer > 0) {
       const newTimer = reloadTimer - delta;

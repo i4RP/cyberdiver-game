@@ -62,18 +62,18 @@ export default function BriefingPage() {
         }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-4xl p-8 overflow-y-auto max-h-screen">
+      <div className="relative z-10 w-full max-w-4xl p-4 md:p-8 overflow-y-auto max-h-screen">
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-cyan-400 mb-2 uppercase tracking-widest">Briefing Room</h1>
-          <p className="text-gray-400 text-sm">Choose your loadout and deployment gate</p>
+        <div className="text-center mb-4 md:mb-6">
+          <h1 className="text-2xl md:text-4xl font-bold text-cyan-400 mb-1 md:mb-2 uppercase tracking-widest">Briefing Room</h1>
+          <p className="text-gray-400 text-xs md:text-sm">Choose your loadout and deployment gate</p>
         </div>
 
         {/* Timer */}
-        <div className="text-center mb-6">
-          <div className="inline-block bg-black/60 border border-cyan-800 px-8 py-3 rounded">
+        <div className="text-center mb-4 md:mb-6">
+          <div className="inline-block bg-black/60 border border-cyan-800 px-4 md:px-8 py-2 md:py-3 rounded">
             <span className="text-xs text-gray-400 uppercase tracking-wider">Battle starts in</span>
-            <div className="text-5xl font-mono font-bold text-white">{timer}s</div>
+            <div className="text-3xl md:text-5xl font-mono font-bold text-white">{timer}s</div>
           </div>
         </div>
 
@@ -93,7 +93,7 @@ export default function BriefingPage() {
           <h2 className="text-sm font-bold text-cyan-400 mb-3 uppercase tracking-wider text-center">
             Select Loadout
           </h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             {/* Primary */}
             <div>
               <div className="text-xs text-gray-400 font-mono uppercase mb-2 text-center">Primary [1]</div>
@@ -225,10 +225,10 @@ export default function BriefingPage() {
         </div>
 
         {/* Ready button */}
-        <div className="text-center">
+        <div className="text-center pb-4">
           <button
             onClick={startBattle}
-            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-4 px-12 rounded text-lg transition-all uppercase tracking-widest"
+            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-3 md:py-4 px-8 md:px-12 rounded text-base md:text-lg transition-all uppercase tracking-widest w-full md:w-auto"
           >
             DEPLOY NOW
           </button>

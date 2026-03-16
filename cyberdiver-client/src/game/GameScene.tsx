@@ -11,6 +11,7 @@ import Crosshair from './components/Crosshair';
 import HUD from './components/HUD';
 import Deployables from './components/Deployables';
 import WebSocketSync from './systems/WebSocketSync';
+import TouchControls from './components/TouchControls';
 
 export default function GameScene() {
   return (
@@ -54,6 +55,7 @@ export default function GameScene() {
       <WebSocketSync />
       <Crosshair />
       <HUD />
+      <TouchControls />
     </div>
   );
 }

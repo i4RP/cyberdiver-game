@@ -1,5 +1,6 @@
 import { useGameStore } from '../../stores/gameStore';
 import { getWeapon } from '../data/weapons';
+import { touchInput } from './TouchControls';
 
 export default function HUD() {
   const health = useGameStore((s) => s.health);
@@ -26,6 +27,8 @@ export default function HUD() {
   const isZoomed = useGameStore((s) => s.isZoomed);
   const grenadeCount = useGameStore((s) => s.grenadeCount);
 
+  const isMobile = touchInput.isMobile;
+
   if (screen !== 'battle') return null;
 
   const healthPercent = (health / maxHealth) * 100;
@@ -39,30 +42,32 @@ export default function HUD() {
   return (
     <div className="fixed inset-0 pointer-events-none z-40">
       {/* Top bar - Team Life */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-center p-2 gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-cyan-400 text-xs font-bold uppercase tracking-wider">Alpha</span>
-          <div className="w-48 h-3 bg-gray-800 border border-cyan-900 rounded-sm overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-center p-2 gap-2 md:gap-4">
+        <div className="flex items-center gap-1 md:gap-2">
+          <span className="text-cyan-400 text-xs font-bold uppercase tracking-wider hidden md:inline">Alpha</span>
+          <span className="text-cyan-400 text-xs font-bold md:hidden">A</span>
+          <div className="w-20 md:w-48 h-2 md:h-3 bg-gray-800 border border-cyan-900 rounded-sm overflow-hidden">
             <div className="h-full bg-cyan-500 transition-all" style={{ width: `${alphaLifePercent}%` }} />
           </div>
-          <span className="text-cyan-400 text-xs font-mono">{battle.teamAlphaLife.toLocaleString()}</span>
+          <span className="text-cyan-400 text-xs font-mono hidden md:inline">{battle.teamAlphaLife.toLocaleString()}</span>
         </div>
 
-        <div className="bg-black/60 border border-cyan-800 px-4 py-1 rounded">
-          <span className="text-white text-lg font-mono font-bold">{minutes}:{seconds.toString().padStart(2, '0')}</span>
+        <div className="bg-black/60 border border-cyan-800 px-2 md:px-4 py-1 rounded">
+          <span className="text-white text-sm md:text-lg font-mono font-bold">{minutes}:{seconds.toString().padStart(2, '0')}</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-red-400 text-xs font-mono">{battle.teamBravoLife.toLocaleString()}</span>
-          <div className="w-48 h-3 bg-gray-800 border border-red-900 rounded-sm overflow-hidden">
+        <div className="flex items-center gap-1 md:gap-2">
+          <span className="text-red-400 text-xs font-mono hidden md:inline">{battle.teamBravoLife.toLocaleString()}</span>
+          <div className="w-20 md:w-48 h-2 md:h-3 bg-gray-800 border border-red-900 rounded-sm overflow-hidden">
             <div className="h-full bg-red-500 transition-all" style={{ width: `${bravoLifePercent}%` }} />
           </div>
-          <span className="text-red-400 text-xs font-bold uppercase tracking-wider">Bravo</span>
+          <span className="text-red-400 text-xs font-bold uppercase tracking-wider hidden md:inline">Bravo</span>
+          <span className="text-red-400 text-xs font-bold md:hidden">B</span>
         </div>
       </div>
 
-      {/* Kill Feed - top right */}
-      <div className="absolute top-12 right-4 flex flex-col gap-1">
+      {/* Kill Feed - top right (hidden on mobile to save space) */}
+      <div className="absolute top-12 right-4 flex-col gap-1 hidden md:flex">
         {killFeed.slice(0, 5).map((entry) => (
           <div key={entry.id} className="bg-black/60 px-3 py-1 rounded text-xs font-mono flex items-center gap-2">
             <span className={entry.killerTeam === 'alpha' ? 'text-cyan-400' : 'text-red-400'}>
@@ -76,8 +81,8 @@ export default function HUD() {
         ))}
       </div>
 
-      {/* Cyber Gate status - top left */}
-      <div className="absolute top-12 left-4 flex flex-col gap-1">
+      {/* Cyber Gate status - top left (compact on mobile) */}
+      <div className="absolute top-10 md:top-12 left-2 md:left-4 flex flex-col gap-1">
         {cyberGates.map((gate) => {
           const gateHealthPercent = (gate.health / gate.maxHealth) * 100;
           const gateColor = gate.team === 'alpha' ? 'text-cyan-400' : 'text-red-400';
@@ -107,33 +112,33 @@ export default function HUD() {
       </div>
 
       {/* Bottom left - Player health + weapon info */}
-      <div className="absolute bottom-6 left-6">
-        <div className="bg-black/60 border border-cyan-800 p-3 rounded">
+      <div className={`absolute ${isMobile ? 'bottom-2 left-2' : 'bottom-6 left-6'}`}>
+        <div className={`bg-black/60 border border-cyan-800 rounded ${isMobile ? 'p-2' : 'p-3'}`}>
           <div className="text-cyan-300 text-xs mb-1 font-mono">HEALTH</div>
-          <div className="w-48 h-4 bg-gray-800 rounded-sm overflow-hidden">
+          <div className={`${isMobile ? 'w-28' : 'w-48'} h-3 md:h-4 bg-gray-800 rounded-sm overflow-hidden`}>
             <div className={`h-full ${healthColor} transition-all`} style={{ width: `${healthPercent}%` }} />
           </div>
-          <div className="text-white text-sm font-mono mt-1">{health} / {maxHealth}</div>
+          <div className="text-white text-xs md:text-sm font-mono mt-1">{health} / {maxHealth}</div>
 
           {/* Weapon info */}
-          <div className="mt-2 pt-2 border-t border-gray-700">
+          <div className="mt-1 md:mt-2 pt-1 md:pt-2 border-t border-gray-700">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-mono font-bold" style={{ color: currentWeapon.accentColor }}>
                 {currentWeapon.name}
               </span>
             </div>
             {currentWeapon.fireMode === 'throw' ? (
-              <div className="text-white text-lg font-mono font-bold">
-                {grenadeCount} <span className="text-gray-500 text-sm">grenades</span>
+              <div className="text-white text-sm md:text-lg font-mono font-bold">
+                {grenadeCount} <span className="text-gray-500 text-xs md:text-sm">grenades</span>
               </div>
             ) : currentWeapon.fireMode === 'deploy' ? (
-              <div className="text-white text-lg font-mono font-bold">
-                {ammo} <span className="text-gray-500 text-sm">charges</span>
+              <div className="text-white text-sm md:text-lg font-mono font-bold">
+                {ammo} <span className="text-gray-500 text-xs md:text-sm">charges</span>
               </div>
             ) : (
               <>
-                <div className="text-white text-lg font-mono font-bold">
-                  {ammo} <span className="text-gray-500 text-sm">/ {maxAmmo}</span>
+                <div className="text-white text-sm md:text-lg font-mono font-bold">
+                  {ammo} <span className="text-gray-500 text-xs md:text-sm">/ {maxAmmo}</span>
                 </div>
                 {isReloading && (
                   <div className="mt-1">
@@ -146,45 +151,49 @@ export default function HUD() {
                     </div>
                   </div>
                 )}
-                {!isReloading && <div className="text-gray-500 text-xs font-mono">R to reload</div>}
+                {!isReloading && !isMobile && <div className="text-gray-500 text-xs font-mono">R to reload</div>}
               </>
             )}
           </div>
 
-          {/* Weapon loadout slots */}
-          <div className="mt-2 pt-2 border-t border-gray-700 flex gap-1">
-            {loadout.map((weaponId, index) => {
-              const w = getWeapon(weaponId);
-              const isActive = index === currentWeaponIndex;
-              return (
-                <div
-                  key={weaponId}
-                  className={`px-2 py-1 rounded text-xs font-mono border ${
-                    isActive
-                      ? 'border-cyan-400 bg-cyan-900/40 text-white'
-                      : 'border-gray-700 bg-gray-800/40 text-gray-500'
-                  }`}
-                >
-                  <span className="text-gray-400 mr-1">{index + 1}</span>
-                  {w.name.split(' ')[0]}
-                </div>
-              );
-            })}
-          </div>
+          {/* Weapon loadout slots - hidden on mobile (use touch switch button instead) */}
+          {!isMobile && (
+            <div className="mt-2 pt-2 border-t border-gray-700 flex gap-1">
+              {loadout.map((weaponId, index) => {
+                const w = getWeapon(weaponId);
+                const isActive = index === currentWeaponIndex;
+                return (
+                  <div
+                    key={weaponId}
+                    className={`px-2 py-1 rounded text-xs font-mono border ${
+                      isActive
+                        ? 'border-cyan-400 bg-cyan-900/40 text-white'
+                        : 'border-gray-700 bg-gray-800/40 text-gray-500'
+                    }`}
+                  >
+                    <span className="text-gray-400 mr-1">{index + 1}</span>
+                    {w.name.split(' ')[0]}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Bottom right - Combat stats */}
-      <div className="absolute bottom-6 right-6">
-        <div className="bg-black/60 border border-cyan-800 p-3 rounded text-xs font-mono">
-          <div className="text-cyan-300 mb-1">COMBAT STATS</div>
-          <div className="text-white">DMG: <span className="text-yellow-400">{damageDealt}</span></div>
-          <div className="text-white">KILLS: <span className="text-red-400">{kills}</span></div>
-          <div className="text-white">SOULS: <span className="text-purple-400">{cyberSoulsCollected}</span></div>
-          <div className="text-white">GATES: <span className="text-orange-400">{gatesDestroyed}</span></div>
-          <div className="text-white">RESPAWN: <span className="text-gray-400">{respawnCount}</span></div>
+      {/* Bottom right - Combat stats (hidden on mobile - touch controls occupy this area) */}
+      {!isMobile && (
+        <div className="absolute bottom-6 right-6">
+          <div className="bg-black/60 border border-cyan-800 p-3 rounded text-xs font-mono">
+            <div className="text-cyan-300 mb-1">COMBAT STATS</div>
+            <div className="text-white">DMG: <span className="text-yellow-400">{damageDealt}</span></div>
+            <div className="text-white">KILLS: <span className="text-red-400">{kills}</span></div>
+            <div className="text-white">SOULS: <span className="text-purple-400">{cyberSoulsCollected}</span></div>
+            <div className="text-white">GATES: <span className="text-orange-400">{gatesDestroyed}</span></div>
+            <div className="text-white">RESPAWN: <span className="text-gray-400">{respawnCount}</span></div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Sniper zoom overlay */}
       {isZoomed && currentWeapon.zoomLevel && (
@@ -219,8 +228,8 @@ export default function HUD() {
         </div>
       )}
 
-      {/* Click to play message */}
-      {!isPointerLocked && !isDowned && (
+      {/* Click to play message (desktop only - mobile has touch controls) */}
+      {!isMobile && !isPointerLocked && !isDowned && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40">
           <div className="bg-black/80 border border-cyan-500 px-8 py-4 rounded text-center">
             <div className="text-cyan-400 text-xl font-bold mb-2">CYBERDIVER</div>
