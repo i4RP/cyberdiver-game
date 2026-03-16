@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getWeapon, DEFAULT_LOADOUT, type WeaponData } from '../game/data/weapons';
 
 interface User {
   id: string;
@@ -63,6 +64,18 @@ interface BattleState {
 
 type GameScreen = 'login' | 'lobby' | 'matchmaking' | 'briefing' | 'battle' | 'results';
 
+export interface Deployable {
+  id: number;
+  type: string;
+  team: 'alpha' | 'bravo';
+  position: [number, number, number];
+  health: number;
+  maxHealth: number;
+  duration: number;
+  radius: number;
+  isActive: boolean;
+}
+
 interface GameStore {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -80,6 +93,25 @@ interface GameStore {
   incrementRespawn: () => void;
   respawnTimer: number;
   setRespawnTimer: (t: number) => void;
+  // Weapon system
+  loadout: string[];
+  setLoadout: (loadout: string[]) => void;
+  currentWeaponIndex: number;
+  setCurrentWeaponIndex: (index: number) => void;
+  currentWeapon: WeaponData;
+  switchWeapon: (index: number) => void;
+  isReloading: boolean;
+  setIsReloading: (r: boolean) => void;
+  reloadTimer: number;
+  setReloadTimer: (t: number) => void;
+  isZoomed: boolean;
+  setIsZoomed: (z: boolean) => void;
+  deployables: Deployable[];
+  addDeployable: (d: Omit<Deployable, 'id'>) => void;
+  removeDeployable: (id: number) => void;
+  damageDeployable: (id: number, amount: number) => void;
+  grenadeCount: number;
+  setGrenadeCount: (n: number) => void;
   ammo: number;
   maxAmmo: number;
   setAmmo: (ammo: number) => void;
@@ -118,6 +150,8 @@ interface GameStore {
   setPointerLocked: (locked: boolean) => void;
   sensitivity: number;
   setSensitivity: (s: number) => void;
+  weaponSwitchCooldown: number;
+  setWeaponSwitchCooldown: (t: number) => void;
 }
 
 const initialBattle: BattleState = {
@@ -149,6 +183,7 @@ const createInitialGates = (): CyberGateData[] => [
 
 let killFeedIdCounter = 0;
 let cyberSoulIdCounter = 0;
+let deployableIdCounter = 0;
 
 export const useGameStore = create<GameStore>((set) => ({
   user: null,
@@ -160,6 +195,8 @@ export const useGameStore = create<GameStore>((set) => ({
   resetBattle: () => {
     killFeedIdCounter = 0;
     cyberSoulIdCounter = 0;
+    deployableIdCounter = 0;
+    const weapon = getWeapon(DEFAULT_LOADOUT[0]);
     set({
       battle: { ...initialBattle },
       health: 1000,
@@ -167,7 +204,17 @@ export const useGameStore = create<GameStore>((set) => ({
       isDowned: false,
       respawnCount: 0,
       respawnTimer: 0,
-      ammo: 30,
+      loadout: [...DEFAULT_LOADOUT],
+      currentWeaponIndex: 0,
+      currentWeapon: weapon,
+      ammo: weapon.magazineSize,
+      maxAmmo: weapon.magazineSize,
+      isReloading: false,
+      reloadTimer: 0,
+      isZoomed: false,
+      deployables: [],
+      grenadeCount: 3,
+      weaponSwitchCooldown: 0,
       damageDealt: 0,
       damageTaken: 0,
       kills: 0,
@@ -194,10 +241,54 @@ export const useGameStore = create<GameStore>((set) => ({
   respawnTimer: 0,
   setRespawnTimer: (respawnTimer) => set({ respawnTimer }),
 
+  // Weapon system
+  loadout: [...DEFAULT_LOADOUT],
+  currentWeaponIndex: 0,
+  currentWeapon: getWeapon(DEFAULT_LOADOUT[0]),
+  switchWeapon: (index) => set((s) => {
+    if (index < 0 || index >= s.loadout.length) return s;
+    const weapon = getWeapon(s.loadout[index]);
+    return {
+      currentWeaponIndex: index,
+      currentWeapon: weapon,
+      ammo: weapon.magazineSize,
+      maxAmmo: weapon.magazineSize,
+      isReloading: false,
+      reloadTimer: 0,
+      isZoomed: false,
+      weaponSwitchCooldown: 0.3,
+    };
+  }),
+  setCurrentWeaponIndex: (currentWeaponIndex) => set({ currentWeaponIndex }),
+  setLoadout: (loadout) => set({ loadout }),
+  isReloading: false,
+  setIsReloading: (isReloading) => set({ isReloading }),
+  reloadTimer: 0,
+  setReloadTimer: (reloadTimer) => set({ reloadTimer }),
+  isZoomed: false,
+  setIsZoomed: (isZoomed) => set({ isZoomed }),
+  deployables: [],
+  addDeployable: (d) => set((s) => ({
+    deployables: [...s.deployables, { ...d, id: deployableIdCounter++ }],
+  })),
+  removeDeployable: (id) => set((s) => ({
+    deployables: s.deployables.filter((d) => d.id !== id),
+  })),
+  damageDeployable: (id, amount) => set((s) => ({
+    deployables: s.deployables.map((d) => {
+      if (d.id !== id) return d;
+      const newHealth = d.health - amount;
+      if (newHealth <= 0) return { ...d, health: 0, isActive: false };
+      return { ...d, health: newHealth };
+    }).filter((d) => d.isActive),
+  })),
+  grenadeCount: 3,
+  setGrenadeCount: (grenadeCount) => set({ grenadeCount }),
+
   ammo: 30,
   maxAmmo: 30,
   setAmmo: (ammo) => set({ ammo }),
-  reload: () => set((s) => ({ ammo: s.maxAmmo })),
+  reload: () => set((s) => ({ ammo: s.maxAmmo, isReloading: false, reloadTimer: 0 })),
 
   damageDealt: 0,
   damageTaken: 0,
@@ -273,4 +364,6 @@ export const useGameStore = create<GameStore>((set) => ({
   setPointerLocked: (isPointerLocked) => set({ isPointerLocked }),
   sensitivity: 0.002,
   setSensitivity: (sensitivity) => set({ sensitivity }),
+  weaponSwitchCooldown: 0,
+  setWeaponSwitchCooldown: (weaponSwitchCooldown) => set({ weaponSwitchCooldown }),
 }));
