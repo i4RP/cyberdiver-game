@@ -16,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
           theme: 'dark',
           accentColor: '#00e5ff',
         },
+        loginMethods: ['email', 'wallet', 'google', 'twitter', 'discord', 'telegram'],
         defaultChain: polygon,
         supportedChains: [polygon],
         embeddedWallets: {
