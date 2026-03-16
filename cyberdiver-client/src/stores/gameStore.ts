@@ -62,7 +62,7 @@ interface BattleState {
   participants: unknown[];
 }
 
-type GameScreen = 'login' | 'lobby' | 'matchmaking' | 'briefing' | 'battle' | 'results';
+type GameScreen = 'login' | 'lobby' | 'matchmaking' | 'briefing' | 'battle' | 'results' | 'economy';
 
 export interface Deployable {
   id: number;

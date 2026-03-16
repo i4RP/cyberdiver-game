@@ -143,9 +143,17 @@ export default function LobbyPage() {
             )}
           </div>
 
-          {/* Wallet */}
+          {/* Wallet & Economy */}
           <div className="bg-gray-900/80 border border-cyan-800/50 rounded-lg p-6">
-            <h2 className="text-lg font-bold text-cyan-400 mb-4 uppercase tracking-wider">Wallet</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-cyan-400 uppercase tracking-wider">Wallet</h2>
+              <button
+                onClick={() => setScreen('economy')}
+                className="text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-700/50 hover:border-yellow-500 px-3 py-1 rounded transition-all uppercase tracking-wider"
+              >
+                GameFi Economy &rarr;
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-gray-500 uppercase">Address</div>

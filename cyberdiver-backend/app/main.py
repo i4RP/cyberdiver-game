@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.models.database import init_db
-from app.routers import auth, wallet, battle, rewards
+from app.routers import auth, wallet, battle, rewards, economy
 
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ app.include_router(auth.router)
 app.include_router(wallet.router)
 app.include_router(battle.router)
 app.include_router(rewards.router)
+app.include_router(economy.router)
 
 
 @app.get("/healthz")

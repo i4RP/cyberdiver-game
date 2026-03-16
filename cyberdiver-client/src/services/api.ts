@@ -143,6 +143,58 @@ class ApiClient {
     return this.request('/api/rewards/stats');
   }
 
+  // Economy
+  async getEconomyDashboard() {
+    return this.request('/api/economy/dashboard');
+  }
+
+  async getEconomyProfile() {
+    return this.request('/api/economy/profile');
+  }
+
+  async placeWager(amount: number) {
+    return this.request('/api/economy/wager', {
+      method: 'POST',
+      body: JSON.stringify({ amount_matic: amount }),
+    });
+  }
+
+  async claimReward(payoutId: string) {
+    return this.request('/api/economy/claim-reward', {
+      method: 'POST',
+      body: JSON.stringify({ payout_id: payoutId }),
+    });
+  }
+
+  async claimAllRewards() {
+    return this.request('/api/economy/claim-all-rewards', {
+      method: 'POST',
+    });
+  }
+
+  async withdraw(amount: number, toAddress: string) {
+    return this.request('/api/economy/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ amount_matic: amount, to_address: toAddress }),
+    });
+  }
+
+  async getTokenInfo() {
+    return this.request('/api/economy/token-info');
+  }
+
+  async syncWalletBalance() {
+    return this.request('/api/wallet/sync-balance', { method: 'POST' });
+  }
+
+  async getMyRewards() {
+    return this.request('/api/rewards/my');
+  }
+
+  async getTransactions() {
+    return this.request('/api/wallet/transactions');
+  }
+
   // WebSocket
   getBattleWsUrl(battleId: string): string {
     const wsUrl = API_URL.replace('http', 'ws');

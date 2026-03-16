@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../../stores/gameStore';
+import { touchInput } from './TouchControls';
 
 const MOVE_SPEED = 15;
 const DASH_SPEED = 30;
@@ -87,8 +88,9 @@ export default function FPSController() {
     return () => document.removeEventListener('pointerlockchange', onPointerLockChange);
   }, [gl, setPointerLocked]);
 
-  // Mouse movement
+  // Mouse movement (desktop)
   useEffect(() => {
+    if (touchInput.isMobile) return;
     const onMouseMove = (e: MouseEvent) => {
       if (!isPointerLocked || isDowned) return;
       euler.current.setFromQuaternion(camera.quaternion);
@@ -125,7 +127,9 @@ export default function FPSController() {
     };
 
     const onClick = () => {
-      requestPointerLock();
+      if (!touchInput.isMobile) {
+        requestPointerLock();
+      }
     };
 
     document.addEventListener('keydown', onKeyDown);
@@ -161,7 +165,19 @@ export default function FPSController() {
       return; // No movement while downed
     }
 
-    if (!isPointerLocked) return;
+    // On mobile, skip pointer lock check and handle touch aim
+    if (touchInput.isMobile) {
+      // Apply touch aim deltas
+      if (touchInput.aimDeltaX !== 0 || touchInput.aimDeltaY !== 0) {
+        euler.current.setFromQuaternion(camera.quaternion);
+        euler.current.y -= touchInput.aimDeltaX * sensitivity * 1.5;
+        euler.current.x -= touchInput.aimDeltaY * sensitivity * 1.5;
+        euler.current.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, euler.current.x));
+        camera.quaternion.setFromEuler(euler.current);
+        touchInput.aimDeltaX = 0;
+        touchInput.aimDeltaY = 0;
+      }
+    } else if (!isPointerLocked) return;
 
     // Simulate bot damage to player (enemy bots shoot at player periodically)
     botDamageTimer.current -= delta;
@@ -210,6 +226,12 @@ export default function FPSController() {
       }
     }
 
+    // Handle touch dash/jump
+    if (touchInput.isMobile) {
+      keys.current.dash = touchInput.dashing;
+      keys.current.jump = touchInput.jumping;
+    }
+
     const speed = isDashing.current ? DASH_SPEED : MOVE_SPEED;
     direction.current.set(0, 0, 0);
 
@@ -221,10 +243,16 @@ export default function FPSController() {
     const right = new THREE.Vector3();
     right.crossVectors(forward, camera.up).normalize();
 
-    if (keys.current.forward) direction.current.add(forward);
-    if (keys.current.backward) direction.current.sub(forward);
-    if (keys.current.left) direction.current.sub(right);
-    if (keys.current.right) direction.current.add(right);
+    // Mobile touch joystick input
+    if (touchInput.isMobile && (touchInput.moveX !== 0 || touchInput.moveY !== 0)) {
+      direction.current.add(forward.clone().multiplyScalar(touchInput.moveY));
+      direction.current.add(right.clone().multiplyScalar(touchInput.moveX));
+    } else {
+      if (keys.current.forward) direction.current.add(forward);
+      if (keys.current.backward) direction.current.sub(forward);
+      if (keys.current.left) direction.current.sub(right);
+      if (keys.current.right) direction.current.add(right);
+    }
 
     if (direction.current.length() > 0) {
       direction.current.normalize();
