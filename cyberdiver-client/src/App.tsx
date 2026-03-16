@@ -9,6 +9,7 @@ import BriefingPage from './pages/BriefingPage';
 import ResultsPage from './pages/ResultsPage';
 import EconomyPage from './pages/EconomyPage';
 import GameScene from './game/GameScene';
+import OrientationLock from './components/OrientationLock';
 
 function App() {
   const screen = useGameStore((s) => s.screen);
@@ -89,24 +90,33 @@ function App() {
     );
   }
 
-  switch (screen) {
-    case 'login':
-      return <LoginPage />;
-    case 'lobby':
-      return <LobbyPage />;
-    case 'matchmaking':
-      return <MatchmakingPage />;
-    case 'briefing':
-      return <BriefingPage />;
-    case 'battle':
-      return <GameScene />;
-    case 'results':
-      return <ResultsPage />;
-    case 'economy':
-      return <EconomyPage />;
-    default:
-      return <LoginPage />;
-  }
+  const renderScreen = () => {
+    switch (screen) {
+      case 'login':
+        return <LoginPage />;
+      case 'lobby':
+        return <LobbyPage />;
+      case 'matchmaking':
+        return <MatchmakingPage />;
+      case 'briefing':
+        return <BriefingPage />;
+      case 'battle':
+        return <GameScene />;
+      case 'results':
+        return <ResultsPage />;
+      case 'economy':
+        return <EconomyPage />;
+      default:
+        return <LoginPage />;
+    }
+  };
+
+  return (
+    <>
+      <OrientationLock />
+      {renderScreen()}
+    </>
+  );
 }
 
 export default App;

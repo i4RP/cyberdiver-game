@@ -7,6 +7,15 @@ import App from './App.tsx'
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID || 'cmmshzs2101xb0ckz9fo85zkt';
 
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW registration failed - app works without it
+    });
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PrivyProvider
