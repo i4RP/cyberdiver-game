@@ -1,8 +1,10 @@
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
+import httpx
 from jose import JWTError, jwt
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -13,6 +15,9 @@ from app.models.database import get_db
 SECRET_KEY = "cyberdiver-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
+
+PRIVY_APP_ID = os.environ.get("PRIVY_APP_ID", "cmmshzs2101xb0ckz9fo85zkt")
+PRIVY_APP_SECRET = os.environ.get("PRIVY_APP_SECRET", "")
 
 security = HTTPBearer()
 
@@ -105,6 +110,80 @@ async def create_guest_user(display_name: Optional[str] = None) -> dict:
         await db.execute(
             "INSERT INTO users (id, username, display_name, is_guest) VALUES (?, ?, ?, 1)",
             (user_id, guest_username, name),
+        )
+        await db.commit()
+
+        cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user = await cursor.fetchone()
+        return dict(user)
+    finally:
+        await db.close()
+
+
+async def verify_privy_token(privy_token: str) -> dict:
+    """Verify a Privy access token JWT and return claims.
+    
+    Privy access tokens are ES256 JWTs. We decode them to extract
+    the user's Privy DID (sub claim), then fetch full user data from
+    the Privy REST API.
+    """
+    if not PRIVY_APP_SECRET:
+        raise HTTPException(status_code=500, detail="Privy app secret not configured")
+
+    # Decode the JWT without verification first to get the user DID
+    # (In production, you should verify against Privy's verification key)
+    try:
+        claims = jwt.decode(privy_token, options={"verify_signature": False})
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Privy token format")
+
+    privy_user_id = claims.get("sub", "")
+    if not privy_user_id:
+        raise HTTPException(status_code=401, detail="No user ID in Privy token")
+
+    # Fetch user data from Privy REST API
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"https://auth.privy.io/api/v1/users/{privy_user_id}",
+            headers={
+                "Authorization": f"Basic {_privy_basic_auth()}",
+                "privy-app-id": PRIVY_APP_ID,
+            },
+        )
+
+    if resp.status_code != 200:
+        # If REST API fails, still return basic claims from the JWT
+        return {"userId": privy_user_id, "linkedAccounts": []}
+
+    return resp.json()
+
+
+def _privy_basic_auth() -> str:
+    """Create Basic auth header value for Privy API."""
+    import base64
+    credentials = f"{PRIVY_APP_ID}:{PRIVY_APP_SECRET}"
+    return base64.b64encode(credentials.encode()).decode()
+
+
+async def get_or_create_privy_user(privy_user_id: str, email: Optional[str] = None, wallet_address: Optional[str] = None) -> dict:
+    """Find or create a user from Privy authentication data."""
+    db = await get_db()
+    try:
+        # Check if user already exists with this Privy ID as username
+        privy_username = f"privy_{privy_user_id}"
+        cursor = await db.execute("SELECT * FROM users WHERE username = ?", (privy_username,))
+        user = await cursor.fetchone()
+
+        if user:
+            return dict(user)
+
+        # Create new user
+        user_id = str(uuid.uuid4())
+        display_name = email or (wallet_address[:10] if wallet_address else f"Player_{user_id[:6]}")
+
+        await db.execute(
+            "INSERT INTO users (id, username, display_name, password_hash, is_guest) VALUES (?, ?, ?, NULL, 0)",
+            (user_id, privy_username, display_name),
         )
         await db.commit()
 

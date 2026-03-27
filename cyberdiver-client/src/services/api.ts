@@ -66,6 +66,13 @@ class ApiClient {
     });
   }
 
+  async privyAuth(privyToken: string) {
+    return this.request('/api/auth/privy', {
+      method: 'POST',
+      body: JSON.stringify({ privy_token: privyToken }),
+    });
+  }
+
   async getProfile() {
     return this.request('/api/auth/me');
   }
